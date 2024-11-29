@@ -3,11 +3,11 @@ from setuptools import setup, find_packages
 
 setup(
     name="botweb",
-    version="0.1.0",
+    version="0.1.1",
     description='Class to perform web selenium and requests operations on web systems',
     author='Ben-Hur P. B. Santos',
     author_email='botlorien@gmail.com',
-    long_description=open("README.md").read(),
+    long_description=open("README.md", encoding='utf-8').read(),
     long_description_content_type="text/markdown",
     url="https://github.com/botlorien/botweb",  # Link para o repositório
     packages=find_packages(),  # Especifica que os pacotes estão na pasta src
