@@ -26,7 +26,7 @@ from .exceptions import (
 from .decorators import retry
 
 
-class Web(ABC):
+class BotWeb(ABC):
     _profile_path: str | None
     _path_to_downloads: str | None
     _browser: str | None
