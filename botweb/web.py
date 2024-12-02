@@ -1,5 +1,7 @@
 import os
 import time
+import json
+import html
 import shutil
 import logging
 import getpass
@@ -7,10 +9,12 @@ import platform
 import requests
 import subprocess
 
+from requests import Response
 from bs4 import BeautifulSoup
-from urllib.parse import urlencode
-from abc import ABC, abstractmethod
 from typing import Optional, List
+from abc import ABC, abstractmethod
+from urllib.parse import urlencode, unquote
+from bs4.element import Tag, NavigableString
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
@@ -491,129 +495,184 @@ class BotWeb(ABC):
 
         return token
 
+    @staticmethod
     def convert_query_url_to_dict(
-            self,
             query: str,
-            empty_values: bool = True
+            empty_values: bool = True,
+            fill_empty_values_by: str = ''
             ) -> dict:
         dict_query = {}
-        query_list = query.split("&")
+        query_list = query.split('&')
         for param in query_list:
-            param_list = param.split("=")
+            param_list = param.split('=')
             if not empty_values:
                 dict_query[param_list[0]] = param_list[1]
+            elif fill_empty_values_by != '':
+                if str(param_list[1]).strip() == '':
+                    dict_query[param_list[0]] = fill_empty_values_by
             else:
-                dict_query[param_list[0]] = ""
+                dict_query[param_list[0]] = ''
         return dict_query
 
-    def convert_dict_to_query_url(self, dict_query: dict) -> str:
+    @staticmethod
+    def convert_dict_to_query_url(
+            dict_query: dict,
+            show_values: bool = False
+            ) -> str:
         query_format = []
         for key in dict_query:
-            query_format.append(f"{key}={dict_query[key]}")
-        return "&".join(query_format)
+            query_format.append(f'{key}={dict_query[key]}')
+            if show_values:
+                logging.info(f'{key}={dict_query[key]}')
+        return '&'.join(query_format)
+
+    def pretty_show_query(self, query: str) -> None:
+        dict_query = self.convert_query_url_to_dict(query, False)
+        logging.info(json.dumps(dict_query, indent=6))
 
     def show_kwargs_possible_values(
             self,
-            html_content: str,
-            query_model: str
-            ) -> None:
-        # Create a BeautifulSoup object
-        soup = BeautifulSoup(html_content, "html.parser")
-
-        additional_params = self.convert_query_url_to_dict(query_model)
-        logging.info('"""')
-        logging.info("    :param kwargs:")
-        logging.info("    Possible keys include:")
-        for key in additional_params:
-            try:
-                # Find the input tag
-                input_tag = soup.find("input", attrs={"name": key})
-
-                if input_tag is not None:
-                    # Find the div tag
-                    div_tag = input_tag.find_next_sibling("div")
-
-                    if div_tag is not None:
-                        # Extract the query parameter name and value
-                        param_name = input_tag["name"]
-                        param_value = (
-                            div_tag.text.strip().replace("&nbsp;", "")
-                            .replace(" ", "")
-                        )
-
-                        # Build the query string
-                        query = f"        - {param_name}: {param_value}"
-
-                        logging.info(query)
-            except KeyError:
-                pass
-        logging.info("    :type kwargs: dict")
-        logging.info("    :return: None")
-        logging.info('"""')
-
-    def update_query_values(
-            self,
-            html_content: str,
+            response: Response,
             query_model: str,
-            attribute: str = "id",
-            urlencode_type: bool = True,
             **kwargs
-            ) -> str | dict:
-        soup = BeautifulSoup(html_content, "html.parser")
+            ) -> None:
+
+        # Create a BeautifulSoup object
+        verbose = kwargs.get('verbose', True)
+        if verbose:
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            additional_params = self.convert_query_url_to_dict(query_model)
+            logging.info('"""')
+            logging.info('    :param kwargs:')
+            logging.info('    Possible keys include:')
+            for key in additional_params:
+                try:
+                    # Find the input tag
+                    input_tag = soup.find('input', attrs={'name': key})
+
+                    if input_tag is not None:
+                        # Find the div tag
+                        div_tag = input_tag.find_next_sibling('div')
+                        if div_tag is not None:
+                            # Extract the query parameter name and value
+                            param_name = input_tag['name']
+                            param_value = (div_tag.text.strip()
+                                           .replace('&nbsp;', '')
+                                           .replace(' ', ''))
+
+                            # Build the query string
+                            query = f'        - {param_name}: {param_value}'
+
+                            logging.info(query)
+                except KeyError:
+                    pass
+                except AttributeError:
+                    pass
+            logging.info('    :type kwargs: dict')
+            logging.info('    :return: None')
+            logging.info('"""')
+
+    def _get_value(
+            self,
+            element: Tag | NavigableString,
+            att: str) -> str | None:
+        if att == 'value':
+            return element.get('value')
+        elif att == 'text':
+            return element.text
+        return None
+
+    def get_input_values_from_html(
+            self,
+            response: Response,
+            attribute: str = 'id',
+            **kwargs) -> dict:
+        soup = BeautifulSoup(response.text, 'html.parser')
 
         # Find all input tags in the HTML
-        inputs = soup.find_all("input")
+        inputs = soup.find_all('input')
+        soup.find
+
+        value = 'value' if 'value' not in kwargs else kwargs.pop('value')
 
         # Build a dictionary with the ids and values from the input tags
         params = {
-            input_tag.get(attribute): input_tag.get("value")
+            input_tag.get(attribute): self._get_value(input_tag, value)
+            for input_tag in inputs
+        }
+        return params
+
+    def update_query_values(
+            self,
+            response: Response,
+            query_model: str,
+            attribute: str = 'id',
+            **kwargs
+            ) -> str:
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Find all input tags in the HTML
+        inputs = soup.find_all('input')
+
+        value = 'value' if 'value' not in kwargs else kwargs.pop('value')
+
+        # Build a dictionary with the ids and values from the input tags
+        params = {
+            input_tag.get(attribute): self._get_value(input_tag, value)
             for input_tag in inputs
         }
 
-        if isinstance(query_model, str):
-            additional_params = self.convert_query_url_to_dict(query_model)
+        self.show_kwargs_possible_values(response, query_model, **kwargs)
 
-        elif isinstance(query_model, dict):
-            additional_params = query_model
+        unquote_ = kwargs.pop('unquote') if 'unquote' in kwargs else False
 
+        additional_params = self.convert_query_url_to_dict(query_model)
         for key in additional_params:
             try:
                 additional_params[key] = params[key]
             except KeyError:
                 pass
         for key in kwargs:
-            additional_params[key] = kwargs[key]
+            if unquote_:
+                additional_params[key] = unquote(str(kwargs[key]))
+            else:
+                additional_params[key] = kwargs[key]
 
-        if not urlencode_type:
-            return additional_params
+        # Use urlencode to create the query string
+        query = urlencode(additional_params)
 
-        return urlencode(additional_params)
+        return query
 
-    def scrap_tags_from_xml(
-            self,
-            html_content: str,
-            tag_inicio: str,
-            tag_final: str
-            ) -> list:
-        content = html_content
-        tag_inicio_xml = "<xml"
-        tag_final_xml = "</xml>"
-        idx_inicio = content.find(tag_inicio_xml)
-        idx_final = content.find(tag_final_xml) + len(tag_final_xml)
-        xml_user = content[idx_inicio:idx_final]
+    @staticmethod
+    def extract_html_values(
+            response: Response,
+            keyword_ini: str,
+            keyword_fin: str
+            ) -> str:
+        try:
+            decoded_text = html.unescape(response.text)
+            logging.info(decoded_text)
+            decoded_text = decoded_text.replace('<b>', '').replace('</b>', '')
+            index_ini = decoded_text.find(keyword_ini)
+            index_fin = decoded_text.find(keyword_fin)
+            extracted_val = decoded_text[
+                index_ini + len(keyword_ini):index_fin
+                ]
+        except IndexError as e:
+            logging.exception(e)
+            extracted_val = None
+        return extracted_val
 
-        # Find number of rows
-        rows = xml_user.split("<r>")
-
-        founds = []
-        for row in rows:
-            idx_inicio = row.find(tag_inicio)
-            idx_final = row.find(tag_final)
-
-            if -1 not in (idx_inicio, idx_final):
-                found = row[idx_inicio + 4:idx_final]
-                founds.append(found)
-        return founds
+    def request_download(self, url: str, name_file: str) -> Response:
+        # get the content
+        response = self.session.get(url)
+        # write file
+        filename = os.path.abspath(
+            os.path.join(self.path_to_downloads, name_file))
+        with open(filename, "wb") as file:
+            file.write(response.content)
+        return response
 
     @retry()
     def click_id_el(self, id: str) -> None:
