@@ -172,6 +172,7 @@ class BotWeb(ABC):
     def profile_path(self, new):
         if new:
             if isinstance(new, str):
+                new = os.path.abspath(new)
                 os.makedirs(new, exist_ok=True)
                 self._profile_path = new
             else:
@@ -201,6 +202,7 @@ class BotWeb(ABC):
     @path_to_downloads.setter
     def path_to_downloads(self, new):
         if isinstance(new, str) and len(new.strip()) > 0:
+            new = os.path.abspath(new)
             os.makedirs(new, exist_ok=True)
             self._path_to_downloads = new
         else:
@@ -365,7 +367,6 @@ class BotWeb(ABC):
         options.add_argument('--log-level=3')
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-extensions")
         options.add_argument("--disable-gpu")
         options.add_argument("--disable-notifications")
         options.add_argument("--disable-popup-blocking")
@@ -413,9 +414,6 @@ class BotWeb(ABC):
         options.log.level = "fatal"
         options.add_argument(
             "--disable-dev-shm-usage"
-        )
-        options.add_argument(
-            "--disable-extensions"
         )
         options.add_argument(
             "--disable-popup-blocking"
