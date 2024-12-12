@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="botweb",
-    version="0.2.1",
+    version="0.2.2",
     description='Class to perform web selenium and requests operations on web systems',
     author='Ben-Hur P. B. Santos',
     author_email='botlorien@gmail.com',
@@ -25,4 +25,7 @@ setup(
         ],
     )
 
+# pip install setuptools
 # python setup.py sdist
+# pip install twine
+# twine upload dist/*
