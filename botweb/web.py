@@ -318,7 +318,7 @@ class BotWeb(ABC):
         # loop over path download until file be found
         contador_while = 0
         while contador_while < timeout:
-            print(os.listdir(self.path_to_downloads))
+            logging.info(f'Files found: {os.listdir(self.path_to_downloads)}')
             # getting the files extentions
             ext_files_list = (
                 str(file_name).split(".")[-1].lower().strip()
