@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="botweb",
-    version="0.2.3",
+    version="0.2.4",
     description='Class to perform web selenium and requests operations on web systems',
     author='Ben-Hur P. B. Santos',
     author_email='botlorien@gmail.com',
