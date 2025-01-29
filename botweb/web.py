@@ -312,16 +312,16 @@ class BotWeb(ABC):
     def wait_download(
             self,
             timeout: int = 3600,
-            use_to_ext: tuple = (".xls", ".csv", ".sswweb", ".json", ".pdf")
+            use_to_ext: tuple = ("xls", "csv", "sswweb", "json", "pdf")
             ) -> None:
 
         # loop over path download until file be found
         contador_while = 0
         while contador_while < timeout:
-
+            print(os.listdir(self.path_to_downloads))
             # getting the files extentions
             ext_files_list = (
-                str(file_name).split(".")[-1].lower()
+                str(file_name).split(".")[-1].lower().strip()
                 for file_name in os.listdir(self.path_to_downloads)
             )
             if any(True for ext in ext_files_list if ext in use_to_ext):
